@@ -1,0 +1,224 @@
+# start: `docker-compose up -d`
+# update images: `docker-compose pull`
+
+services:
+  #
+  ### sabnzbd
+
+  sabnzbd:
+    image: ghcr.io/linuxserver/sabnzbd
+    container_name: sabnzbd
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - "./docker/sabnzbd/config:/config"
+      - "./docker/sabnzbd/downloads/incomplete:/incomplete"
+      - "/mnt/hoth-downloads:/downloads"
+      - "/mnt/hoth-tv:/tv"
+      - "/mnt/hoth-movies:/movies"
+    environment:
+      TZ: Europe/London
+      HAS_IPV6: false
+      PUID: 1000
+      PGID: 1000
+    restart: always
+    networks:
+      - media-network
+
+  #
+  ### sonarr
+
+  sonarr:
+    image: ghcr.io/linuxserver/sonarr
+    container_name: sonarr
+    ports:
+      - "8989:8989"
+    volumes:
+      - "./docker/sonarr/config:/config"
+      - "/mnt/hoth-downloads:/downloads"
+      - "/mnt/hoth-tv:/tv"
+    environment:
+      TZ: Europe/London
+      PUID: 1000
+      PGID: 1000
+    restart: always
+    networks:
+      - media-network
+
+  #
+  ### radarr
+
+  radarr:
+    image: ghcr.io/linuxserver/radarr
+    container_name: radarr
+    ports:
+      - "7878:7878"
+    volumes:
+      - "./docker/radarr/config:/config"
+      - "/mnt/hoth-downloads:/downloads"
+      - "/mnt/hoth-movies:/movies"
+    environment:
+      TZ: Europe/London
+      PUID: 1000
+      PGID: 1000
+    restart: always
+    networks:
+      - media-network
+
+  #
+  ### overseer
+
+  overseer:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseer
+    ports:
+      - "5055:5055"
+    volumes:
+      - "./docker/overseerr/config:/config"
+    environment:
+      TZ: Europe/London
+      PUID: 1000
+      PGID: 1000
+    restart: always
+    networks:
+      - media-network
+
+  #
+  ### lidarr
+
+  lidarr:
+    image: ghcr.io/linuxserver/lidarr
+    container_name: lidarr
+    ports:
+      - "8686:8686"
+    volumes:
+      - "./docker/lidarr/config:/config"
+      - "/mnt/hoth-downloads:/downloads"
+      - "/mnt/hoth-music:/music"
+    environment:
+      TZ: Europe/London
+      PUID: 1000
+      PGID: 1000
+    restart: always
+    networks:
+      - media-network
+
+  #
+  ### prowlarr
+  prowlarr:
+    image: linuxserver/prowlarr
+    container_name: prowlarr
+    environment:
+      TZ: Europe/London
+      PUID: 1000
+      PGID: 1000
+    volumes:
+      - "./docker/prowlarr/config:/config"
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+    networks:
+      - media-network
+
+  #
+  ### homepage
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./docker/homepage/config:/config"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    environment:
+      TZ: Europe/London
+      PUID: 1000
+      PGID: 1000
+    restart: always
+    networks:
+      - media-network
+
+  #
+  ### tautulli
+
+  tautulli:
+    image: ghcr.io/linuxserver/tautulli:latest
+    container_name: tautulli
+    ports:
+      - "8181:8181"
+    volumes:
+      - "./docker/tautulli/config:/app/config"
+    environment:
+      TZ: Europe/London
+      PUID: 1000
+      PGID: 1000
+    restart: always
+    network_mode: host
+
+  #
+  ### portainer
+
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    volumes:
+      - "./docker/portainer:/data"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    environment:
+      TZ: Europe/London
+      PUID: 1000
+      PGID: 1000
+    restart: always
+    network_mode: host
+
+  #
+  ### System Monitoring
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - UMASK_SET=022
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9292:9090
+    restart: unless-stopped
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node-exporter
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - UMASK_SET=022
+    volumes:
+      - /:/host:ro,rslave
+    ports:
+      - 9100:9090
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - UMASK_SET=022
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+
+networks:
+  media-network:
